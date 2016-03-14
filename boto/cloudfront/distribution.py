@@ -649,13 +649,13 @@ class Distribution(object):
     @staticmethod
     def _sign_string(message, private_key_file=None, private_key_string=None):
         """
-        Signs a string for use with Amazon CloudFront.
-        Requires the rsa library be installed.
+        Signs a string for use with Amazon CloudFront.  Requires the M2Crypto
+        library be installed.
         """
         try:
-            import rsa
+            from M2Crypto import EVP
         except ImportError:
-            raise NotImplementedError("Boto depends on the python rsa "
+            raise NotImplementedError("Boto depends on the python M2Crypto "
                                       "library to generate signed URLs for "
                                       "CloudFront")
         # Make sure only one of private_key_file and private_key_string is set
@@ -672,9 +672,12 @@ class Distribution(object):
             else:
                 private_key_string = private_key_file.read()
 
-        # Sign it!
-        private_key = rsa.PrivateKey.load_pkcs1(private_key_string)
-        signature = rsa.sign(str(message), private_key, 'SHA-1')
+                # Now load key and calculate signature
+        key = EVP.load_key_string(private_key_string)
+        key.reset_context(md='sha1')
+        key.sign_init()
+        key.sign_update(str(message))
+        signature = key.sign_final()
         return signature
 
     @staticmethod
